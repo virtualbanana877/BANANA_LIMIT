@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>限界バナナ BANANA LIMIT</title>
+<meta name="description" content="お前のバナナは何秒持つ？ 地球最後のバナナを操作して限界まで生き延びる、ワンタップ生存ゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="限界バナナ BANANA LIMIT">
+<meta property="og:description" content="お前のバナナは何秒持つ？ #限界バナナ #BANANALIMIT">
+<meta property="og:image" content="https://ユーザー名.github.io/リポジトリ名/thumbnail.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://ユーザー名.github.io/リポジトリ名/thumbnail.png">
+<style>
+:root{--bg:#fff0c2;--ink:#3b2a00;--card:#fff;--acc:#ffcf1f;--red:#e5484d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#2a2200;--ink:#fff2b8;--card:#3b3000}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#2a2200;--ink:#fff2b8;--card:#3b3000}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:'Hiragino Sans','Noto Sans JP','Yu Gothic',sans-serif;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:14px}
+.hide{display:none!important}
+h1{margin:0;font-size:44px;letter-spacing:2px;text-shadow:0 3px 0 var(--acc)}
+.sub{font-weight:700;letter-spacing:4px;font-size:14px}
+.big{font-size:110px;animation:wob 1.2s ease-in-out infinite}
+@keyframes wob{0%,100%{transform:rotate(-8deg) scale(1)}50%{transform:rotate(8deg) scale(1.08)}}
+button,a.b{font:inherit;font-weight:800;border:0;border-radius:999px;padding:12px 26px;background:var(--card);color:var(--ink);box-shadow:0 4px 0 rgba(0,0,0,.25);text-decoration:none;display:inline-block;cursor:pointer;font-size:16px}
+.go{background:var(--acc);color:#3b2a00;font-size:26px;padding:16px 56px}
+.x{background:#111;color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+#help{background:var(--card);border-radius:14px;padding:10px 14px;font-size:13px;line-height:1.6;max-width:330px;text-align:left}
+#card{max-height:36vh;max-width:86vw;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.3);-webkit-touch-callout:default;-webkit-user-select:auto}
+#rk{font-size:26px;font-weight:900}
+#cm{font-size:15px;font-weight:700;max-width:320px}
+#toast{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 14px;border-radius:99px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
+</style></head><body>
+<canvas id="cv"></canvas>
+<div id="title" class="scr">
+ <div class="big">🍌</div>
+ <h1>限界バナナ</h1><div class="sub">BANANA LIMIT</div>
+ <div style="font-weight:800">お前のバナナは何秒持つ？</div>
+ <div id="chal" class="hide" style="color:var(--red);font-weight:900"></div>
+ <div id="best" style="font-size:14px"></div>
+ <button class="go" id="start">START</button>
+ <button id="hb">遊び方</button>
+ <div id="help" class="hide">👆 タップ:バナナがタップした側へ素早く移動(皮が少し剥ける)<br>✊ 長押し:滑空でスローモーション(皮がどんどん減る)<br>🍌 ぶつかると皮が剥け、むきバナナ状態でもう一度ぶつかるとゲームオーバー<br>🥇 金バナナで皮が回復。連続回避でコンボ最大×5!<br>PC:← → キーで移動、スペース長押しで滑空</div>
+</div>
+<div id="result" class="scr hide">
+ <img id="card" alt="シェア画像">
+ <div id="rk"></div><div id="sc"></div><div id="cm"></div>
+ <div class="row"><a class="b x" id="tw" target="_blank" rel="noopener">𝕏 に投稿</a><a class="b x" id="ch" target="_blank" rel="noopener">挑戦状を送る</a><button id="sv">画像を共有</button></div>
+ <button class="go" id="again">もう一度挑戦</button>
+</div>
+<div id="toast"></div>
+<script>
+const F="'Hiragino Sans','Noto Sans JP','Yu Gothic',sans-serif";
+const $=i=>document.getElementById(i),cv=$('cv'),ctx=cv.getContext('2d');
+const DEF={
+monkey:{e:'🐵',r:24,t:0,sp:1,w:3,fate:'モンキーに略奪'},
+knife:{e:'🔪',r:20,t:0,sp:1.3,w:2,fate:'輪切り'},
+fork:{e:'🍴',r:20,t:0,sp:1.1,w:2,fate:'フォークで一突き'},
+blender:{e:'🥤',r:26,t:10,sp:1,w:3,fate:'スムージー化'},
+toaster:{e:'🍞',r:28,t:10,sp:.9,w:2,fate:'焦げバナナ化'},
+kid:{e:'👶',r:26,t:12,sp:1.05,w:2,fate:'子供にパクッ'},
+gorilla:{e:'🦍',r:40,t:25,sp:.9,w:2,fate:'ゴリラにペシャンコ'},
+basket:{e:'🧺',r:44,t:28,sp:1.2,w:1,fate:'バスケットの下敷き'}};
+const BG=[['#fff0c2','#ffd98a'],['#d7f0c8','#8fd18a'],['#d6e8ff','#a9b9cc']];
+let W,H,S,dpr,st='title',g={},best=0,chal=0,ac;
+try{best=+localStorage.getItem('bl_best')||0}catch(e){}
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;S=Math.min(W/400,H/640);cv.width=W*dpr;cv.height=H*dpr}
+addEventListener('resize',resize);resize();
+function snd(f,d,ty,v,f2){try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),n=ac.createGain(),t=ac.currentTime;o.type=ty||'square';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);n.gain.setValueAtTime(v||.04,t);n.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(n);n.connect(ac.destination);o.start();o.stop(t+d)}catch(e){}}
+function banana(c,x,y,s,naked,mood){c.save();c.translate(x,y);c.rotate(-.35);c.lineWidth=Math.max(2,s*.08);c.strokeStyle='#8a5a00';c.fillStyle=naked?'#fff1b8':'#ffd21f';
+c.beginPath();c.ellipse(0,0,s*.55,s,0,0,7);c.fill();c.stroke();
+c.fillStyle='#6b4a14';c.beginPath();c.arc(0,-s,s*.14,0,7);c.fill();
+if(!naked){c.strokeStyle='rgba(138,90,0,.4)';c.beginPath();c.moveTo(-s*.3,-s*.7);c.lineTo(-s*.3,s*.7);c.moveTo(s*.3,-s*.7);c.lineTo(s*.3,s*.7);c.stroke()}
+c.strokeStyle='#3b2a00';c.fillStyle='#fff';
+for(const ex of[-.2,.2]){if(mood==2){c.beginPath();c.moveTo(s*ex-s*.1,-s*.25);c.lineTo(s*ex+s*.1,-s*.05);c.moveTo(s*ex+s*.1,-s*.25);c.lineTo(s*ex-s*.1,-s*.05);c.stroke()}else{c.beginPath();c.arc(s*ex,-s*.15,s*(mood?.15:.12),0,7);c.fill();c.fillStyle='#000';c.beginPath();c.arc(s*ex,-s*.15,s*.05,0,7);c.fill();c.fillStyle='#fff'}}
+c.beginPath();if(mood)c.ellipse(0,s*.2,s*.1,s*.14,0,0,7);else c.arc(0,s*.1,s*.15,.2,Math.PI-.2);c.stroke();c.restore()}
+function newGame(){g={t:0,score:0,peel:100,combo:0,bx:W/2,vx:0,obs:[],pops:[],sp:.7,ev:0,evNext:20,shake:0,inv:0,hold:false,holdT:0,glide:false,thin:false,sc:0,danger:0,killer:null,deadT:0,banner:'',bt:0};st='play';$('title').classList.add('hide');$('result').classList.add('hide')}
+const mult=()=>Math.min(5,1+Math.floor(g.combo/4));
+function pop(t,x,y,col,sz){g.pops.push({t,x,y,col,sz,l:1})}
+function dash(d){if(st!='play'||g.glide)return;const nk=g.peel<=0;g.vx=Math.max(-720*S,Math.min(720*S,g.vx+d*(nk?1000:760)*S));g.peel=Math.max(0,g.peel-1.5);snd(520,.08,'square',.04,780)}
+function spawn(){const ev=g.ev>0;let pool=Object.keys(DEF).filter(k=>DEF[k].t<=g.t),tw=0;pool.forEach(k=>tw+=DEF[k].w);let k,r=Math.random()*tw;for(k of pool){r-=DEF[k].w;if(r<=0)break}
+if(Math.random()<(ev?.4:.07))k='gold';const d=k=='gold'?{e:'🥇',r:20,sp:.8}:DEF[k];const rr=d.r*S*1.25;let x=rr+Math.random()*(W-2*rr);if(k!='gold'&&Math.random()<.3)x=Math.max(rr,Math.min(W-rr,g.bx+(Math.random()-.5)*120*S));
+g.obs.push({k,d,x,x0:x,y:-rr,r:rr,amp:Math.random()<.35?(20+Math.random()*30)*S:0,ph:Math.random()*6,minD:1e9,done:false,near:false})}
+function hit(o){if(g.inv>0)return;snd(160,.25,'sawtooth',.07,60);if(g.peel<=0){die(o);return}
+g.peel=Math.max(0,g.peel-35);g.inv=1.2;g.shake=.3;g.combo=0;pop('ペリッ！',g.bx,H*.7,'#e5484d',34*S);
+if(g.peel>0&&g.peel<=15){g.thin=true;g.score+=300;pop('皮1枚残し！+300',W/2,H*.4,'#d98a00',26*S)}
+if(g.peel<=0)pop('むきバナナ！',W/2,H*.45,'#e5484d',30*S)}
+function die(o){st='dead';g.killer=o.d;g.deadT=0;g.shake=.5;snd(420,.7,'sawtooth',.08,50)}
+function update(dt){const ts=g.glide?.55:1,nk=g.peel<=0;g.t+=dt;g.bt-=dt;g.inv-=dt;g.shake-=dt;
+if(g.hold){g.holdT+=dt;g.glide=g.holdT>.25&&g.peel>0}else g.glide=false;
+if(g.glide)g.peel=Math.max(0,g.peel-10*dt);
+g.score+=dt*10*mult();
+g.vx*=Math.pow(nk?.18:.02,dt);g.bx+=g.vx*dt;const br=(nk?18:15)*S;if(g.bx<br){g.bx=br;g.vx*=-.4}if(g.bx>W-br){g.bx=W-br;g.vx*=-.4}
+if(g.t>=g.evNext&&!g.ev){g.ev=5;g.evNext=g.t+25+Math.random()*10;g.banner=Math.random()<.5?'🏨 高級ホテルの朝食ブッフェ！':'🔨 バナナオークション会場！';g.bt=2.5;snd(880,.3,'triangle',.06,1320)}
+if(g.ev>0)g.ev-=dt;
+g.sp-=dt;if(g.sp<=0){g.sp=Math.max(.32,1-g.t*.014)/(g.ev>0?1.8:1);spawn()}
+const by=H*.8,base=(170+Math.min(g.t,60)*5)*S;g.danger=0;
+for(const o of g.obs){o.y+=base*o.d.sp*ts*dt;o.ph+=dt*3;o.x=o.x0+Math.sin(o.ph)*o.amp;const dx=o.x-g.bx,dy=o.y-by,dist=Math.hypot(dx,dy),lim=o.r*.68+br;o.minD=Math.min(o.minD,dist);
+if(o.k!='gold'&&dy<0&&dy>-170*S&&Math.abs(dx)<lim+30*S)g.danger=Math.max(g.danger,1-(-dy/(170*S)));
+if(!o.done&&dist<lim){o.done=true;if(o.k=='gold'){g.score+=200;g.peel=Math.min(100,g.peel+15);pop('+200 皮回復',o.x,o.y,'#d98a00',22*S);snd(990,.15,'triangle',.05,1500)}else{hit(o);if(st!='play')return}}
+else if(!o.done&&o.y>by+o.r+br&&o.k!='gold'){o.done=true;g.combo++;if(o.minD<lim+22*S){g.score+=50;pop('ギリギリ！+50',o.x,by-30*S,'#0a8f6a',20*S)}
+if(g.combo%4==0){pop(g.combo+'コンボ！！',W/2,H*.5,'#e5484d',44*S);snd(660,.12,'square',.05,990)}}}
+g.obs=g.obs.filter(o=>o.y<H+80*S);
+for(const p of g.pops){p.l-=dt*1.1;p.y-=30*S*dt}g.pops=g.pops.filter(p=>p.l>0);g.sc=(g.sc+base*ts*.6*dt)%(90*S)}
+function draw(){ctx.setTransform(dpr,0,0,dpr,0,0);const stg=g.t<15?0:g.t<30?1:2,gr=ctx.createLinearGradient(0,0,0,H);gr.addColorStop(0,BG[stg][0]);gr.addColorStop(1,BG[stg][1]);ctx.fillStyle=gr;ctx.fillRect(0,0,W,H);
+ctx.save();if(g.shake>0)ctx.translate((Math.random()-.5)*10*S,(Math.random()-.5)*10*S);
+ctx.fillStyle='rgba(0,0,0,.06)';const sc=g.sc||0;for(let y=-90*S;y<H+90*S;y+=90*S)ctx.fillRect(0,H-((y+sc)%(H+90*S))-8*S,W,8*S);
+if(st=='title'||!g.obs){banana(ctx,W/2,H*.8,22*S,false,0);ctx.restore();return}
+for(const o of g.obs){const gd=o.k=='gold';ctx.beginPath();ctx.arc(o.x,o.y,o.r*1.05,0,7);ctx.fillStyle='rgba(255,255,255,.9)';ctx.fill();ctx.lineWidth=4*S;ctx.strokeStyle=gd?'#e0a800':'#e5484d';ctx.stroke();ctx.font=(o.r*1.7)+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(o.d.e,o.x,o.y+o.r*.06)}
+const nk=g.peel<=0,by=H*.8;
+if(st=='dead'){ctx.save();ctx.translate(g.bx,by);ctx.rotate(g.deadT*14);banana(ctx,0,0,22*S*(1+g.deadT*.6),true,2);ctx.restore();ctx.font=(g.killer.r*2.4)+'px serif';ctx.fillText(g.killer.e,g.bx,by-g.deadT*40*S)}
+else{if(!(g.inv>0&&Math.floor(g.inv*14)%2))banana(ctx,g.bx,by+Math.sin(g.t*10)*2*S,22*S*(nk?1.05:1),nk,g.danger>.3?1:0);if(g.glide){ctx.strokeStyle='rgba(0,160,220,.7)';ctx.lineWidth=3*S;ctx.beginPath();ctx.arc(g.bx,by,34*S,0,7);ctx.stroke()}}
+ctx.restore();
+if(g.danger>0){const rg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.3,W/2,H/2,Math.max(W,H)*.75);rg.addColorStop(0,'rgba(229,72,77,0)');rg.addColorStop(1,'rgba(229,72,77,'+(.2+.4*(Math.floor(g.t*8)%2)*g.danger)+')');ctx.fillStyle=rg;ctx.fillRect(0,0,W,H)}
+ctx.textAlign='left';ctx.textBaseline='top';ctx.fillStyle='#3b2a00';ctx.font='900 '+26*S+'px '+F;ctx.fillText(g.t.toFixed(1)+'秒',12*S,10*S);ctx.font='800 '+15*S+'px '+F;ctx.fillText('SCORE '+Math.floor(g.score)+(mult()>1?'  ×'+mult():''),12*S,40*S);
+const bw=120*S,bx=W-bw-12*S;ctx.textAlign='right';ctx.font='800 '+13*S+'px '+F;ctx.fillText(nk?'むき！':'🍌 皮',W-12*S,10*S);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(bx,30*S,bw,14*S);ctx.fillStyle=g.peel>50?'#ffd21f':g.peel>0?'#ff8a1f':'#999';ctx.fillRect(bx,30*S,bw*g.peel/100,14*S);
+ctx.textAlign='center';ctx.textBaseline='middle';
+if(g.bt>0){ctx.font='900 '+22*S+'px '+F;ctx.fillStyle='#e5484d';ctx.fillText(g.banner,W/2,H*.2)}
+for(const p of g.pops){ctx.globalAlpha=Math.min(1,p.l*1.5);ctx.fillStyle=p.col;ctx.font='900 '+p.sz+'px '+F;ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.strokeText(p.t,p.x,p.y);ctx.fillText(p.t,p.x,p.y)}ctx.globalAlpha=1}
+let last=0;function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(st=='play')update(dt);else if(st=='dead'){g.deadT+=dt;g.shake-=dt;if(g.deadT>.9)showResult()}draw();requestAnimationFrame(loop)}
+function rank(s){return s>=2200?{n:'伝説の黄金バナナ',c1:'#fff3a0',c2:'#ffc400'}:s>=900?{n:'完熟バナナ',c1:'#ffe9a8',c2:'#ffb347'}:s>=300?{n:'普通バナナ',c1:'#fff4c9',c2:'#ffd98a'}:{n:'焦げバナナ',c1:'#e8d6b0',c2:'#a88a5a'}}
+let R,txt,sec,score,fate;
+function showResult(){st='result';sec=Math.floor(g.t);score=Math.floor(g.score);R=rank(score);fate=g.killer.fate;const nb=score>best;if(nb){best=score;try{localStorage.setItem('bl_best',best)}catch(e){}}
+const hs='#限界バナナ #BANANALIMIT';
+txt=sec<5?sec+'秒で'+fate+'したバナナ。人生を感じた '+hs:g.thin?'皮1枚残して'+sec+'秒。ほぼ神。 '+hs:'俺のバナナは'+sec+'秒持った。お前は何秒？ '+hs;
+const cms=[fate+'。それが限界だった',sec+'秒の命。バナナにしては長生き',fate+'。お前のバナナ、よく頑張った'];
+let cm=sec<5?sec+'秒で'+fate+'。人生を感じた':score>=2200?'ほぼ神。伝説のバナナだった':cms[Math.floor(Math.random()*3)];
+window._cm=cm;$('card').src=card(cm);
+$('rk').textContent='お前のバナナの末路:'+fate;$('sc').innerHTML=sec+'秒 / '+score+'点 / <b>'+R.n+'</b>'+(nb?' 🎉NEW RECORD':'　BEST '+best);
+let ct=chal?(score>chal?'🔥 挑戦成功！(挑戦スコア '+chal+')':'挑戦失敗…(挑戦スコア '+chal+')'):'';$('cm').textContent=cm+(ct?'\n'+ct:'');$('cm').style.whiteSpace='pre-line';
+const base=location.href.split('#')[0];
+$('tw').href='https://twitter.com/intent/tweet?text='+encodeURIComponent(txt)+'&url='+encodeURIComponent(base);
+$('ch').href='https://twitter.com/intent/tweet?text='+encodeURIComponent('俺のバナナは'+sec+'秒・'+score+'点。この挑戦状、受けて立て！ '+hs)+'&url='+encodeURIComponent(base+'#c'+score);
+$('result').classList.remove('hide')}
+function wrap(c,t,mw){const out=[];let l='';for(const ch of t){if(c.measureText(l+ch).width>mw){out.push(l);l=ch}else l+=ch}out.push(l);return out}
+function card(cm){const c=document.createElement('canvas');c.width=c.height=1080;const x=c.getContext('2d');const gr=x.createLinearGradient(0,0,0,1080);gr.addColorStop(0,R.c1);gr.addColorStop(1,R.c2);x.fillStyle=gr;x.fillRect(0,0,1080,1080);
+x.textAlign='center';x.textBaseline='alphabetic';x.fillStyle='#3b2a00';x.font='900 58px '+F;x.fillText('限界バナナ  BANANA LIMIT',540,100);
+banana(x,330,450,170,true,2);x.font='230px serif';x.fillText(g.killer.e,700,520);
+x.font='900 170px '+F;x.fillText(sec+'秒',540,740);x.font='900 58px '+F;x.fillText('SCORE '+score+'  /  '+R.n,540,825);
+x.font='800 44px '+F;wrap(x,cm,860).slice(0,2).forEach((l,i)=>x.fillText(l,540,910+i*56));
+x.font='900 44px '+F;x.fillText('#限界バナナ #BANANALIMIT',540,1035);return c.toDataURL('image/png')}
+function toast(m){const t=$('toast');t.textContent=m;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,2200)}
+$('sv').onclick=async()=>{try{const b=await (await fetch($('card').src)).blob(),f=new File([b],'banana-limit.png',{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],text:txt});return}}catch(e){}toast('画像を長押しで保存できます')};
+function init(){const m=location.hash.match(/^#c(\d+)$/);if(m){chal=+m[1];$('chal').textContent='挑戦状:スコア '+chal+' を超えろ！';$('chal').classList.remove('hide')}$('best').textContent=best?'ハイスコア '+best:''}
+$('start').onclick=()=>{snd(600,.1,'square',.04,900);newGame()};
+$('again').onclick=()=>{newGame()};
+$('hb').onclick=()=>$('help').classList.toggle('hide');
+cv.addEventListener('pointerdown',e=>{e.preventDefault();if(st!='play')return;const r=cv.getBoundingClientRect();dash(e.clientX-r.left<g.bx?-1:1);g.hold=true;g.holdT=0});
+['pointerup','pointercancel','pointerleave'].forEach(n=>cv.addEventListener(n,()=>{if(g)g.hold=false}));
+addEventListener('keydown',e=>{if(st!='play')return;if(e.key=='ArrowLeft')dash(-1);if(e.key=='ArrowRight')dash(1);if(e.code=='Space'&&!e.repeat){g.hold=true;g.holdT=.3}});
+addEventListener('keyup',e=>{if(e.code=='Space'&&g)g.hold=false});
+init();requestAnimationFrame(loop);
+</script></body></html>
